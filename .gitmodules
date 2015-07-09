@@ -1,6 +1,6 @@
 [submodule "make-utils"]
 	path = make-utils
 	url = https://github.com/wichtounet/make-utils.git
-[submodule "rc-switch"]
-	path = rc-switch
-	url = https://github.com/sui77/rc-switch.git
+[submodule "rc-switch-rpi"]
+	path = rc-switch-rpi
+	url = https://github.com/wichtounet/rc-switch-rpi.git
