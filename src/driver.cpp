@@ -90,6 +90,7 @@ int main(){
 
             rc_switch.resetAvailable();
         }
+        delay(100); //TODO Perhaps this is not a good idea
     }
 
     //Close the socket
