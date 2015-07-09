@@ -51,7 +51,7 @@ void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1){
         int value = rc_switch.getReceivedValue();
 
         if (value) {
-            if(rc_switch.getReceivedvalue() == 1135920){
+            if(rc_switch.getReceivedValue() == 1135920){
                 //Send the event to the server
                 auto nbytes = snprintf(write_buffer, 4096, "EVENT %d 1", rf_button_1);
                 write(socket_fd, write_buffer, nbytes);
