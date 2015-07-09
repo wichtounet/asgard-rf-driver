@@ -46,17 +46,50 @@ bool revoke_root(){
     return true;
 }
 
+void decode_wt450(unsigned long value){
+    unsigned long data;
+    int house=0;
+    byte station=0;
+    int humidity=0;
+    double temperature=0;
+    double tempdecimal=0;
+    byte tempfraction=0;
+
+    data=(unsigned long)value;
+
+    house=(data>>28) & (0x0f);
+    station=((data>>26) & (0x03))+1;
+    humidity=(data>>16)&(0xff);
+    temperature=((data>>8) & (0xff));
+    temperature = temperature - 50;
+    tempfraction=(data>>4) & (0x0f);
+
+    tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
+    temperature=temperature+tempdecimal;
+    temperature=(int)(temperature*10);
+    temperature=temperature/10;
+
+    std::cout << house << std::endl;
+    std::cout << station << std::endl;
+    std::cout << humidity << std::endl;
+    std::cout << temperature << std::endl;
+}
+
 void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1){
     if (rc_switch.available()) {
         int value = rc_switch.getReceivedValue();
 
         if (value) {
-            if(rc_switch.getReceivedValue() == 1135920){
+            if((rc_switch.getReceivedProtocol() == 1 || rc_switch.getReceivedProtocol() == 2) && rc_switch.getReceivedValue() == 1135920){
                 //Send the event to the server
                 auto nbytes = snprintf(write_buffer, 4096, "EVENT %d 1", rf_button_1);
                 write(socket_fd, write_buffer, nbytes);
             } else {
                 printf("asgard:rf:received unknown value: %i\n", rc_switch.getReceivedValue());
+                printf("asgard:rf:received unknown protocol: %i\n", rc_switch.getReceivedProtocol());
+
+                unsigned long value = rc_switch.getReceivedValue();
+                decode_wt450(value);
             }
         } else {
             printf("asgard:rf:received unknown encoding\n");
