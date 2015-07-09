@@ -5,10 +5,10 @@ default: release
 include make-utils/flags-pi.mk
 include make-utils/cpp-utils.mk
 
-CXX_FLAGS += -pedantic
-LD_FLAGS  += -llrfc_client
+CXX_FLAGS += -pedantic -Irc-switch
 
 $(eval $(call auto_folder_compile,src))
+$(eval $(call auto_folder_compile,rc-switch))
 $(eval $(call auto_add_executable,rf_driver))
 
 release: release_rf_driver

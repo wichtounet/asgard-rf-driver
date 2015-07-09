@@ -14,7 +14,44 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include "RCSwitch.h"
+
+namespace {
+
+bool revoke_root(){
+    if (getuid() == 0) {
+        if (setgid(1000) != 0){
+            std::cout << "asgard:dht11: setgid: Unable to drop group privileges: " << strerror(errno) << std::endl;
+            return false;
+        }
+
+        if (setuid(1000) != 0){
+            std::cout << "asgard:dht11: setgid: Unable to drop user privileges: " << strerror(errno) << std::endl;
+            return false;
+        }
+    }
+
+    if (setuid(0) != -1){
+        std::cout << "asgard:dht11: managed to regain root privileges, exiting..." << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+const std::size_t gpio_pin = 2;
+
+} //end of anonymous namespace
+
 int main(){
+    //Run the wiringPi setup (as root)
+    wiringPiSetup();
+
+    //Drop root privileges and run as pi:pi again
+    if(!revoke_root()){
+       std::cout << "asgard:dht11: unable to revoke root privileges, exiting..." << std::endl;
+       return 1;
+    }
     //Open the socket
     auto socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(socket_fd < 0){
@@ -34,7 +71,24 @@ int main(){
         return 1;
     }
 
-    //TODO
+    RCSwitch rc_switch;
+
+    rc_switch = RCSwitch();
+    rc_switch.enableReceive(gpio_pin);
+
+    while(true) {
+        if (rc_switch.available()) {
+            int value = rc_switch.getReceivedValue();
+
+            if (value == 0) {
+                printf("Wrong encoding\n");
+            } else {
+                printf("Received value : %i\n", rc_switch.getReceivedValue() );
+            }
+
+            rc_switch.resetAvailable();
+        }
+    }
 
     //Close the socket
     close(socket_fd);
