@@ -11,8 +11,7 @@
 #include <cstring>
 
 #include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
+#include <sys/un.h> #include <unistd.h>
 
 #include "RCSwitch.h"
 
@@ -46,36 +45,31 @@ bool revoke_root(){
     return true;
 }
 
-void decode_wt450(unsigned long value){
-    unsigned long data;
-    int house=0;
-    byte station=0;
-    int humidity=0;
-    double temperature=0;
-    double tempdecimal=0;
-    byte tempfraction=0;
-
-    data=(unsigned long)value;
-
-    house=(data>>28) & (0x0f);
-    station=((data>>26) & (0x03))+1;
-    humidity=(data>>16)&(0xff);
-    temperature=((data>>8) & (0xff));
+void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int humidity_sensor){
+    int house=(data>>28) & (0x0f);
+    byte station=((data>>26) & (0x03))+1;
+    int humidity=(data>>16)&(0xff);
+    double temperature=((data>>8) & (0xff));
     temperature = temperature - 50;
-    tempfraction=(data>>4) & (0x0f);
+    byte tempfraction=(data>>4) & (0x0f);
 
-    tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
+    double tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
     temperature=temperature+tempdecimal;
     temperature=(int)(temperature*10);
     temperature=temperature/10;
 
-    std::cout << house << std::endl;
-    std::cout << station << std::endl;
-    std::cout << humidity << std::endl;
-    std::cout << temperature << std::endl;
+    //Note: House and station can be used to distinguish between different weather stations
+
+    //Send the humidity to the server
+    auto nbytes = snprintf(write_buffer, 4096, "DATA %d %d", humidity_sensor, humidity);
+    write(socket_fd, write_buffer, nbytes);
+
+    //Send the temperature to the server
+    nbytes = snprintf(write_buffer, 4096, "DATA %d %f", temperature_sensor, temperature);
+    write(socket_fd, write_buffer, nbytes);
 }
 
-void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1){
+void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1, int temperature_sensor, int humidity_sensor){
     if (rc_switch.available()) {
         int value = rc_switch.getReceivedValue();
 
@@ -84,12 +78,12 @@ void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1){
                 //Send the event to the server
                 auto nbytes = snprintf(write_buffer, 4096, "EVENT %d 1", rf_button_1);
                 write(socket_fd, write_buffer, nbytes);
+            } else if(rc_switch.getReceivedProtocol() == 5){
+                unsigned long value = rc_switch.getReceivedValue();
+                decode_wt450(value, socket_fd, temperature_sensor, humidity_sensor);
             } else {
                 printf("asgard:rf:received unknown value: %i\n", rc_switch.getReceivedValue());
                 printf("asgard:rf:received unknown protocol: %i\n", rc_switch.getReceivedProtocol());
-
-                unsigned long value = rc_switch.getReceivedValue();
-                decode_wt450(value);
             }
         } else {
             printf("asgard:rf:received unknown encoding\n");
@@ -112,7 +106,7 @@ int main(){
 
     //Drop root privileges and run as pi:pi again
     if(!revoke_root()){
-       std::cout << "asgard:dht11: unable to revoke root privileges, exiting..." << std::endl;
+       std::cout << "asgard:rf: unable to revoke root privileges, exiting..." << std::endl;
        return 1;
     }
 
@@ -153,10 +147,42 @@ int main(){
     int rf_button_1 = atoi(receive_buffer);
     std::cout << "remote actuator: " << rf_button_1 << std::endl;
 
-    while(true) {
-        read_data(rc_switch, socket_fd, rf_button_1);
+    nbytes = snprintf(write_buffer, 4096, "REG_SENSOR TEMPERATURE rf_weather_1");
+    write(socket_fd, write_buffer, nbytes);
 
-        delay(100); //TODO Perhaps this is not a good idea
+    nbytes = read(socket_fd, receive_buffer, 4096);
+
+    if(!nbytes){
+        std::cout << "asgard:dht11: failed to register sensor" << std::endl;
+        return 1;
+    }
+
+    receive_buffer[nbytes] = 0;
+
+    int temperature_sensor = atoi(receive_buffer);
+
+    std::cout << "Temperature sensor: " << temperature_sensor << std::endl;
+
+    nbytes = snprintf(write_buffer, 4096, "REG_SENSOR HUMIDITY rf_weather_1");
+    write(socket_fd, write_buffer, nbytes);
+
+    nbytes = read(socket_fd, receive_buffer, 4096);
+
+    if(!nbytes){
+        std::cout << "asgard:dht11: failed to register sensor" << std::endl;
+        return 1;
+    }
+
+    receive_buffer[nbytes] = 0;
+
+    int humidity_sensor = atoi(receive_buffer);
+
+    std::cout << "Humidity sensor: " << humidity_sensor << std::endl;
+
+    while(true) {
+        read_data(rc_switch, socket_fd, rf_button_1, temperature_sensor, humidity_sensor);
+
+        delay(10); //TODO Perhaps this is not a good idea
     }
 
     //Close the socket
