@@ -18,6 +18,9 @@
 
 namespace {
 
+const std::size_t UNIX_PATH_MAX = 108;
+const std::size_t gpio_pin = 2;
+
 bool revoke_root(){
     if (getuid() == 0) {
         if (setgid(1000) != 0){
@@ -38,8 +41,6 @@ bool revoke_root(){
 
     return true;
 }
-
-const std::size_t gpio_pin = 2;
 
 } //end of anonymous namespace
 
