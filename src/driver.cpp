@@ -21,6 +21,10 @@ namespace {
 const std::size_t UNIX_PATH_MAX = 108;
 const std::size_t gpio_pin = 2;
 
+//Buffers
+char write_buffer[4096];
+char receive_buffer[4096];
+
 bool revoke_root(){
     if (getuid() == 0) {
         if (setgid(1000) != 0){
@@ -40,6 +44,26 @@ bool revoke_root(){
     }
 
     return true;
+}
+
+void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1){
+    if (rc_switch.available()) {
+        int value = rc_switch.getReceivedValue();
+
+        if (value) {
+            if(rc_switch.getReceivedvalue() == 1135920){
+                //Send the event to the server
+                auto nbytes = snprintf(write_buffer, 4096, "EVENT %d 1", rf_button_1);
+                write(socket_fd, write_buffer, nbytes);
+            } else {
+                printf("asgard:rf:received unknown value: %i\n", rc_switch.getReceivedValue());
+            }
+        } else {
+            printf("asgard:rf:received unknown encoding\n");
+        }
+
+        rc_switch.resetAvailable();
+    }
 }
 
 } //end of anonymous namespace
@@ -78,18 +102,26 @@ int main(){
         return 1;
     }
 
+    //Register the actuator
+    auto nbytes = snprintf(write_buffer, 4096, "REG_ACTUATOR rf_button_1");
+    write(socket_fd, write_buffer, nbytes);
+
+    //Get the response from the server
+    nbytes = read(socket_fd, receive_buffer, 4096);
+
+    if(!nbytes){
+        std::cout << "asgard:ir: failed to register actuator" << std::endl;
+        return 1;
+    }
+
+    receive_buffer[nbytes] = 0;
+
+    //Parse the actuator id
+    int rf_button_1 = atoi(receive_buffer);
+    std::cout << "remote actuator: " << rf_button_1 << std::endl;
+
     while(true) {
-        if (rc_switch.available()) {
-            int value = rc_switch.getReceivedValue();
-
-            if (value == 0) {
-                printf("Wrong encoding\n");
-            } else {
-                printf("Received value : %i\n", rc_switch.getReceivedValue() );
-            }
-
-            rc_switch.resetAvailable();
-        }
+        read_data(rc_switch, socket_fd, rf_button_1);
 
         delay(100); //TODO Perhaps this is not a good idea
     }
