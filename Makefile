@@ -6,6 +6,7 @@ include make-utils/flags-pi.mk
 include make-utils/cpp-utils.mk
 
 CXX_FLAGS += -pedantic -Irc-switch-rpi
+LD_FLAGS += -lwiringPi
 
 $(eval $(call auto_folder_compile,src))
 $(eval $(call auto_folder_compile,rc-switch-rpi))
