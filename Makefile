@@ -19,7 +19,7 @@ debug: debug_rf_driver
 all: release release_debug debug
 
 run: release
-	./release/bin/rf_driver
+	sudo ./release/bin/rf_driver
 
 clean: base_clean
 
