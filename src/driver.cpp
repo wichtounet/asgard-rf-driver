@@ -45,14 +45,20 @@ bool revoke_root(){
 } //end of anonymous namespace
 
 int main(){
+    RCSwitch rc_switch;
+
     //Run the wiringPi setup (as root)
     wiringPiSetup();
+
+    rc_switch = RCSwitch();
+    rc_switch.enableReceive(gpio_pin);
 
     //Drop root privileges and run as pi:pi again
     if(!revoke_root()){
        std::cout << "asgard:dht11: unable to revoke root privileges, exiting..." << std::endl;
        return 1;
     }
+
     //Open the socket
     auto socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
     if(socket_fd < 0){
@@ -71,11 +77,6 @@ int main(){
         std::cout << "asgard:rf: connect() failed" << std::endl;
         return 1;
     }
-
-    RCSwitch rc_switch;
-
-    rc_switch = RCSwitch();
-    rc_switch.enableReceive(gpio_pin);
 
     while(true) {
         if (rc_switch.available()) {
