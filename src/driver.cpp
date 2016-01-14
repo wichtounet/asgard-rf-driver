@@ -11,7 +11,8 @@
 #include <cstring>
 
 #include <sys/socket.h>
-#include <sys/un.h> #include <unistd.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include "RCSwitch.h"
 
@@ -59,6 +60,8 @@ void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int
     temperature=temperature/10;
 
     //Note: House and station can be used to distinguish between different weather stations
+    (void) house;
+    (void) station;
 
     //Send the humidity to the server
     auto nbytes = snprintf(write_buffer, 4096, "DATA %d %d", humidity_sensor, humidity);
@@ -153,7 +156,7 @@ int main(){
     nbytes = read(socket_fd, receive_buffer, 4096);
 
     if(!nbytes){
-        std::cout << "asgard:dht11: failed to register sensor" << std::endl;
+        std::cout << "asgard:dht11: failed to register temperature sensor" << std::endl;
         return 1;
     }
 
@@ -169,7 +172,7 @@ int main(){
     nbytes = read(socket_fd, receive_buffer, 4096);
 
     if(!nbytes){
-        std::cout << "asgard:dht11: failed to register sensor" << std::endl;
+        std::cout << "asgard:dht11: failed to register humidity sensor" << std::endl;
         return 1;
     }
 
