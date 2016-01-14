@@ -182,10 +182,12 @@ int main(){
 
     std::cout << "Humidity sensor: " << humidity_sensor << std::endl;
 
+    //wait for events
     while(true) {
         read_data(rc_switch, socket_fd, rf_button_1, temperature_sensor, humidity_sensor);
 
-        delay(10); //TODO Perhaps this is not a good idea
+        //wait for 10 time units
+        delay(10);
     }
 
     //Close the socket
