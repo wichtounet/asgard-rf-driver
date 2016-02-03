@@ -1,3 +1,6 @@
+CXX=g++
+LD=g++
+
 user=pi
 pi=192.168.20.161
 password=raspberry
@@ -31,7 +34,7 @@ remote_clean:
 
 remote_make:
 	sshpass -p ${password} scp Makefile ${user}@${pi}:${dir}/
-	sshpass -p ${password} scp src/*.cpp ${user}@${pi}:${dir}/
+	sshpass -p ${password} scp src/*.cpp ${user}@${pi}:${dir}/src/
 	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make"
 
 remote_run:
