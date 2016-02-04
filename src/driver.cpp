@@ -50,14 +50,8 @@ void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int
     int house=(data>>28) & (0x0f);
     byte station=((data>>26) & (0x03))+1;
     int humidity=(data>>16)&(0xff);
-    double temperature=((data>>8) & (0xff));
+    int temperature=((data>>8) & (0xff));
     temperature = temperature - 50;
-    byte tempfraction=(data>>4) & (0x0f);
-
-    double tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
-    temperature=temperature+tempdecimal;
-    temperature=(int)(temperature*10);
-    temperature=temperature/10;
 
     //Note: House and station can be used to distinguish between different weather stations
     (void) house;
@@ -67,8 +61,10 @@ void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int
     auto nbytes = snprintf(write_buffer, 4096, "DATA %d %d", humidity_sensor, humidity);
     write(socket_fd, write_buffer, nbytes);
 
+    sleep(1);
+
     //Send the temperature to the server
-    nbytes = snprintf(write_buffer, 4096, "DATA %d %f", temperature_sensor, temperature);
+    nbytes = snprintf(write_buffer, 4096, "DATA %d %d", temperature_sensor, temperature);
     write(socket_fd, write_buffer, nbytes);
 }
 
@@ -85,7 +81,7 @@ void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1, int temperat
                 unsigned long value = rc_switch.getReceivedValue();
                 decode_wt450(value, socket_fd, temperature_sensor, humidity_sensor);
             } else {
-                printf("asgard:rf:received unknown value: %i\n", rc_switch.getReceivedValue());
+                printf("asgard:rf:received unknown value: %lu\n", rc_switch.getReceivedValue());
                 printf("asgard:rf:received unknown protocol: %i\n", rc_switch.getReceivedProtocol());
             }
         } else {
