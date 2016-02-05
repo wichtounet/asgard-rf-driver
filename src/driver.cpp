@@ -85,7 +85,7 @@ void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1, int temperat
                 unsigned long value = rc_switch.getReceivedValue();
                 decode_wt450(value, socket_fd, temperature_sensor, humidity_sensor);
             } else {
-                printf("asgard:rf:received unknown value: %i\n", rc_switch.getReceivedValue());
+                printf("asgard:rf:received unknown value: %lu\n", rc_switch.getReceivedValue());
                 printf("asgard:rf:received unknown protocol: %i\n", rc_switch.getReceivedProtocol());
             }
         } else {
