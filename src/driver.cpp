@@ -67,8 +67,6 @@ void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int
     auto nbytes = snprintf(write_buffer, 4096, "DATA %d %d", humidity_sensor, humidity);
     write(socket_fd, write_buffer, nbytes);
 
-    sleep(1);
-
     //Send the temperature to the server
     nbytes = snprintf(write_buffer, 4096, "DATA %d %f", temperature_sensor, temperature);
     write(socket_fd, write_buffer, nbytes);
