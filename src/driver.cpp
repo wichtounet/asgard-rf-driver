@@ -20,26 +20,85 @@ namespace {
 
 const std::size_t UNIX_PATH_MAX = 108;
 const std::size_t gpio_pin = 2;
+const std::size_t buffer_size = 4096;
+
+// Configuration (this should be in a configuration file)
+const char* server_socket_path = "/tmp/asgard_socket";
+const char* client_socket_path = "/tmp/asgard_rf_socket";
 
 //Buffers
-char write_buffer[4096];
-char receive_buffer[4096];
+char write_buffer[buffer_size + 1];
+char receive_buffer[buffer_size + 1];
+
+// The socket file descriptor
+int socket_fd;
+
+// The socket addresses
+struct sockaddr_un client_address;
+struct sockaddr_un server_address;
+
+// The remote IDs
+int source_id = -1;
+int temperature_sensor_id = -1;
+int humidity_sensor_id = -1;
+int button_actuator_id = -1;
+
+void stop(){
+    std::cout << "asgard:rf: stop the driver" << std::endl;
+
+    // Unregister the temperature sensor, if necessary
+    if(temperature_sensor_id >= 0){
+        auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_SENSOR %d %d", source_id, temperature_sensor_id);
+        sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
+    }
+
+    // Unregister the humidity sensor, if necessary
+    if(temperature_sensor_id >= 0){
+        auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_SENSOR %d %d", source_id, humidity_sensor_id);
+        sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
+    }
+
+    // Unregister the button actuator, if necessary
+    if(temperature_sensor_id >= 0){
+        auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_ACTUATOR %d %d", source_id, button_actuator_id);
+        sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
+    }
+
+    // Unregister the source, if necessary
+    if(source_id >= 0){
+        auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_SOURCE %d", source_id);
+        sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
+    }
+
+    // Unlink the client socket
+    unlink(client_socket_path);
+
+    // Close the socket
+    close(socket_fd);
+}
+
+void terminate(int){
+    stop();
+
+    std::exit(0);
+}
+
 
 bool revoke_root(){
     if (getuid() == 0) {
         if (setgid(1000) != 0){
-            std::cout << "asgard:dht11: setgid: Unable to drop group privileges: " << strerror(errno) << std::endl;
+            std::cout << "asgard:rf: setgid: Unable to drop group privileges: " << strerror(errno) << std::endl;
             return false;
         }
 
         if (setuid(1000) != 0){
-            std::cout << "asgard:dht11: setgid: Unable to drop user privileges: " << strerror(errno) << std::endl;
+            std::cout << "asgard:rf: setgid: Unable to drop user privileges: " << strerror(errno) << std::endl;
             return false;
         }
     }
 
     if (setuid(0) != -1){
-        std::cout << "asgard:dht11: managed to regain root privileges, exiting..." << std::endl;
+        std::cout << "asgard:rf: managed to regain root privileges, exiting..." << std::endl;
         return false;
     }
 
@@ -64,23 +123,23 @@ void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int
     (void) station;
 
     //Send the humidity to the server
-    auto nbytes = snprintf(write_buffer, 4096, "DATA %d %d", humidity_sensor, humidity);
-    write(socket_fd, write_buffer, nbytes);
+    auto nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %d", source_id, humidity_sensor_id, humidity);
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
     //Send the temperature to the server
-    nbytes = snprintf(write_buffer, 4096, "DATA %d %f", temperature_sensor, temperature);
-    write(socket_fd, write_buffer, nbytes);
+    nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %f", source_id, temperature_sensor_id, temperature);
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 }
 
-void read_data(RCSwitch& rc_switch, int socket_fd, int rf_button_1, int temperature_sensor, int humidity_sensor){
+void read_data(RCSwitch& rc_switch){
     if (rc_switch.available()) {
         int value = rc_switch.getReceivedValue();
 
         if (value) {
             if((rc_switch.getReceivedProtocol() == 1 || rc_switch.getReceivedProtocol() == 2) && rc_switch.getReceivedValue() == 1135920){
                 //Send the event to the server
-                auto nbytes = snprintf(write_buffer, 4096, "EVENT %d 1", rf_button_1);
-                write(socket_fd, write_buffer, nbytes);
+                auto nbytes = snprintf(write_buffer, buffer_size, "EVENT %d %d %d", source_id, button_actuator_id, 1);
+                sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
             } else if(rc_switch.getReceivedProtocol() == 5){
                 unsigned long value = rc_switch.getReceivedValue();
                 decode_wt450(value, socket_fd, temperature_sensor, humidity_sensor);
@@ -113,78 +172,85 @@ int main(){
        return 1;
     }
 
-    //Open the socket
-    auto socket_fd = socket(PF_UNIX, SOCK_STREAM, 0);
+    // Open the socket
+    socket_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if(socket_fd < 0){
-        std::cout << "asgard:rf: socket() failed" << std::endl;
+        std::cerr << "asgard:rf: socket() failed" << std::endl;
         return 1;
     }
 
-    //Init the address
-    struct sockaddr_un address;
-    memset(&address, 0, sizeof(struct sockaddr_un));
-    address.sun_family = AF_UNIX;
-    snprintf(address.sun_path, UNIX_PATH_MAX, "/tmp/asgard_socket");
+    // Init the client address
+    memset(&client_address, 0, sizeof(struct sockaddr_un));
+    client_address.sun_family = AF_UNIX;
+    snprintf(client_address.sun_path, UNIX_PATH_MAX, client_socket_path);
 
-    //Connect to the server
-    if(connect(socket_fd, (struct sockaddr *) &address, sizeof(struct sockaddr_un)) != 0){
-        std::cout << "asgard:rf: connect() failed" << std::endl;
+    // Unlink the client socket
+    unlink(client_socket_path);
+
+    // Bind to client socket
+    if(bind(socket_fd, (const struct sockaddr *) &client_address, sizeof(struct sockaddr_un)) < 0){
+        std::cerr << "asgard:rf: bind() failed" << std::endl;
         return 1;
     }
 
-    //Register the actuator
-    auto nbytes = snprintf(write_buffer, 4096, "REG_ACTUATOR rf_button_1");
-    write(socket_fd, write_buffer, nbytes);
+    //Register signals for "proper" shutdown
+    signal(SIGTERM, terminate);
+    signal(SIGINT, terminate);
 
-    //Get the response from the server
-    nbytes = read(socket_fd, receive_buffer, 4096);
+    // Init the server address
+    memset(&server_address, 0, sizeof(struct sockaddr_un));
+    server_address.sun_family = AF_UNIX;
+    snprintf(server_address.sun_path, UNIX_PATH_MAX, server_socket_path);
 
-    if(!nbytes){
-        std::cout << "asgard:ir: failed to register actuator" << std::endl;
-        return 1;
-    }
+    socklen_t address_length = sizeof(struct sockaddr_un);
 
-    receive_buffer[nbytes] = 0;
+    // Register the source
+    auto nbytes = snprintf(write_buffer, buffer_size, "REG_SOURCE rf");
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
-    //Parse the actuator id
-    int rf_button_1 = atoi(receive_buffer);
-    std::cout << "remote actuator: " << rf_button_1 << std::endl;
+    auto bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
+    receive_buffer[bytes_received] = '\0';
 
-    nbytes = snprintf(write_buffer, 4096, "REG_SENSOR TEMPERATURE rf_weather_1");
-    write(socket_fd, write_buffer, nbytes);
+    source_id = atoi(receive_buffer);
 
-    nbytes = read(socket_fd, receive_buffer, 4096);
+    std::cout << "asgard:rf: remote source: " << source_id << std::endl;
 
-    if(!nbytes){
-        std::cout << "asgard:dht11: failed to register temperature sensor" << std::endl;
-        return 1;
-    }
+    // Register the temperature sensor
+    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "TEMPERATURE", "local");
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
-    receive_buffer[nbytes] = 0;
+    bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
+    receive_buffer[bytes_received] = '\0';
 
-    int temperature_sensor = atoi(receive_buffer);
+    temperature_sensor_id = atoi(receive_buffer);
 
-    std::cout << "Temperature sensor: " << temperature_sensor << std::endl;
+    std::cout << "asgard:rf: remote temperature sensor: " << temperature_sensor_id << std::endl;
 
-    nbytes = snprintf(write_buffer, 4096, "REG_SENSOR HUMIDITY rf_weather_1");
-    write(socket_fd, write_buffer, nbytes);
+    // Register the humidity sensor
+    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "HUMIDITY", "local");
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
-    nbytes = read(socket_fd, receive_buffer, 4096);
+    bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
+    receive_buffer[bytes_received] = '\0';
 
-    if(!nbytes){
-        std::cout << "asgard:dht11: failed to register humidity sensor" << std::endl;
-        return 1;
-    }
+    humidity_sensor_id = atoi(receive_buffer);
 
-    receive_buffer[nbytes] = 0;
+    std::cout << "asgard:rf: remote humidity sensor: " << temperature_sensor_id << std::endl;
 
-    int humidity_sensor = atoi(receive_buffer);
+    // Register the button actuator
+    nbytes = snprintf(write_buffer, buffer_size, "REG_ACTUATOR %d %s", source_id, "rf_button_1");
+    sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
-    std::cout << "Humidity sensor: " << humidity_sensor << std::endl;
+    bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
+    receive_buffer[bytes_received] = '\0';
+
+    button_actuator_id = atoi(receive_buffer);
+
+    std::cout << "asgard:rf: remote button actuator: " << button_actuator_id << std::endl;
 
     //wait for events
     while(true) {
-        read_data(rc_switch, socket_fd, rf_button_1, temperature_sensor, humidity_sensor);
+        read_data(rc_switch);
 
         //wait for 10 time units
         delay(10);
