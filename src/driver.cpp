@@ -217,7 +217,7 @@ int main(){
     std::cout << "asgard:rf: remote source: " << source_id << std::endl;
 
     // Register the temperature sensor
-    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "TEMPERATURE", "local");
+    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "TEMPERATURE", "rf_weather");
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
     bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
@@ -228,7 +228,7 @@ int main(){
     std::cout << "asgard:rf: remote temperature sensor: " << temperature_sensor_id << std::endl;
 
     // Register the humidity sensor
-    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "HUMIDITY", "local");
+    nbytes = snprintf(write_buffer, buffer_size, "REG_SENSOR %d %s %s", source_id, "HUMIDITY", "rf_weather");
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
     bytes_received = recvfrom(socket_fd, receive_buffer, buffer_size, 0, (struct sockaddr *) &(server_address), &address_length);
