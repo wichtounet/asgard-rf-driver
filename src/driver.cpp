@@ -257,8 +257,7 @@ int main(){
         delay(10);
     }
 
-    //Close the socket
-    close(socket_fd);
+    stop();
 
     return 0;
 }
