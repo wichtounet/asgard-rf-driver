@@ -105,7 +105,7 @@ bool revoke_root(){
     return true;
 }
 
-void decode_wt450(unsigned long data, int socket_fd, int temperature_sensor, int humidity_sensor){
+void decode_wt450(unsigned long data){
     int house=(data>>28) & (0x0f);
     byte station=((data>>26) & (0x03))+1;
     int humidity=(data>>16)&(0xff);
@@ -142,7 +142,7 @@ void read_data(RCSwitch& rc_switch){
                 sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
             } else if(rc_switch.getReceivedProtocol() == 5){
                 unsigned long value = rc_switch.getReceivedValue();
-                decode_wt450(value, socket_fd, temperature_sensor, humidity_sensor);
+                decode_wt450(value);
             } else {
                 printf("asgard:rf:received unknown value: %lu\n", rc_switch.getReceivedValue());
                 printf("asgard:rf:received unknown protocol: %i\n", rc_switch.getReceivedProtocol());
