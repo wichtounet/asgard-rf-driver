@@ -54,13 +54,13 @@ void stop(){
     }
 
     // Unregister the humidity sensor, if necessary
-    if(temperature_sensor_id >= 0){
+    if(humidity_sensor_id >= 0){
         auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_SENSOR %d %d", source_id, humidity_sensor_id);
         sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
     }
 
     // Unregister the button actuator, if necessary
-    if(temperature_sensor_id >= 0){
+    if(button_actuator_id >= 0){
         auto nbytes = snprintf(write_buffer, buffer_size, "UNREG_ACTUATOR %d %d", source_id, button_actuator_id);
         sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
     }
