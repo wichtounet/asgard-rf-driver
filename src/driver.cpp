@@ -236,7 +236,7 @@ int main(){
 
     humidity_sensor_id = atoi(receive_buffer);
 
-    std::cout << "asgard:rf: remote humidity sensor: " << temperature_sensor_id << std::endl;
+    std::cout << "asgard:rf: remote humidity sensor: " << humidity_sensor_id << std::endl;
 
     // Register the button actuator
     nbytes = snprintf(write_buffer, buffer_size, "REG_ACTUATOR %d %s", source_id, "rf_button_1");
