@@ -116,7 +116,7 @@ void decode_wt450(unsigned long data){
 
     double tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
     temperature=temperature+tempdecimal;
-    temperature=(int)(temperature*10);
+    temperature=(int)(temperature*10);;
     temperature=temperature/10;
 
     //Note: House and station can be used to distinguish between different weather stations
@@ -128,7 +128,7 @@ void decode_wt450(unsigned long data){
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
     //Send the temperature to the server
-    nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %f", source_id, temperature_sensor_id, temperature);
+    nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %.1f", source_id, temperature_sensor_id, temperature);
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 }
 
