@@ -116,7 +116,7 @@ void decode_wt450(unsigned long data){
 
     double tempdecimal=((tempfraction>>3 & 1) * 0.5) + ((tempfraction>>2 & 1) * 0.25) + ((tempfraction>>1 & 1) * 0.125) + ((tempfraction & 1) * 0.0625);
     temperature=temperature+tempdecimal;
-    temperature=(int)(temperature*10);;
+    temperature=(int)(temperature*10);
     temperature=temperature/10;
 
     //Note: House and station can be used to distinguish between different weather stations
