@@ -128,7 +128,7 @@ void decode_wt450(unsigned long data){
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 
     //Send the temperature to the server
-    nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %f", source_id, temperature_sensor_id, temperature);
+    nbytes = snprintf(write_buffer, buffer_size, "DATA %d %d %.1f", source_id, temperature_sensor_id, temperature);
     sendto(socket_fd, write_buffer, nbytes, 0, (struct sockaddr *) &server_address, sizeof(struct sockaddr_un));
 }
 
@@ -236,7 +236,7 @@ int main(){
 
     humidity_sensor_id = atoi(receive_buffer);
 
-    std::cout << "asgard:rf: remote humidity sensor: " << temperature_sensor_id << std::endl;
+    std::cout << "asgard:rf: remote humidity sensor: " << humidity_sensor_id << std::endl;
 
     // Register the button actuator
     nbytes = snprintf(write_buffer, buffer_size, "REG_ACTUATOR %d %s", source_id, "rf_button_1");
