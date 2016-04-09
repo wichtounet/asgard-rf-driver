@@ -4,3 +4,6 @@
 [submodule "rc-switch-rpi"]
 	path = rc-switch-rpi
 	url = https://github.com/wichtounet/rc-switch-rpi.git
+[submodule "asgard-lib"]
+	path = asgard-lib
+	url = https://github.com/wichtounet/asgard-lib.git
