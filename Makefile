@@ -18,7 +18,7 @@ conf: pi.conf
 
 include pi.conf
 
-CXX_FLAGS += -pedantic -Irc-switch-rpi
+CXX_FLAGS += -pedantic -Irc-switch-rpi -Iasgard-lib/include/
 LD_FLAGS += -lwiringPi
 
 $(eval $(call auto_folder_compile,src))

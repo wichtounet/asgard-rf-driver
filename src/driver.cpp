@@ -73,7 +73,7 @@ void read_data(RCSwitch& rc_switch){
         if (value) {
             if((rc_switch.getReceivedProtocol() == 1 || rc_switch.getReceivedProtocol() == 2) && rc_switch.getReceivedValue() == 1135920){
                 //Send the event to the server
-                asgard::send_event(driver, source_id, actuator_id, std::to_string(1));
+                asgard::send_event(driver, source_id, button_actuator_id, std::to_string(1));
             } else if(rc_switch.getReceivedProtocol() == 5){
                 unsigned long value = rc_switch.getReceivedValue();
                 decode_wt450(value);
@@ -106,13 +106,6 @@ int main(){
        return 1;
     }
 
-    // Open the socket
-    socket_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if(socket_fd < 0){
-        std::cerr << "asgard:rf: socket() failed" << std::endl;
-        return 1;
-    }
-
     // Open the connection
     if(!asgard::open_driver_connection(driver, client_socket_path, server_socket_path)){
         return 1;
@@ -124,9 +117,9 @@ int main(){
 
     // Register the source and sensors
     source_id = asgard::register_source(driver, "rf");
-    sensor_id = asgard::register_sensor(driver, source_id, "TEMPERATURE", "rf_weather");
-    sensor_id = asgard::register_sensor(driver, source_id, "HUMIDITY", "rf_weather");
-    sensor_id = asgard::register_actuator(driver, source_id, "rf_button");
+    temperature_sensor_id = asgard::register_sensor(driver, source_id, "TEMPERATURE", "rf_weather");
+    humidity_sensor_id = asgard::register_sensor(driver, source_id, "HUMIDITY", "rf_weather");
+    button_actuator_id = asgard::register_actuator(driver, source_id, "rf_button");
 
     //wait for events
     while(true) {
