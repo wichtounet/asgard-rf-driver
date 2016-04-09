@@ -1,17 +1,22 @@
 CXX=g++
 LD=g++
 
-user=pi
-pi=192.168.20.161
-password=raspberry
-dir=/home/${user}/asgard/asgard-rf-driver/
-
 default: release
 
 .PHONY: default release debug all clean
 
 include make-utils/flags-pi.mk
 include make-utils/cpp-utils.mk
+
+pi.conf:
+	echo "user=pi" > pi.conf
+	echo "pi=192.168.20.161" >> pi.conf
+	echo "password=raspberry" >> pi.conf
+	echo "dir=/home/pi/asgard/asgard-rf-driver/" >> pi.conf
+
+conf: pi.conf
+
+include pi.conf
 
 CXX_FLAGS += -pedantic -Irc-switch-rpi
 LD_FLAGS += -lwiringPi
@@ -33,9 +38,14 @@ remote_clean:
 	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make clean"
 
 remote_make:
-	sshpass -p ${password} scp Makefile ${user}@${pi}:${dir}/
-	sshpass -p ${password} scp src/*.cpp ${user}@${pi}:${dir}/src/
+	sshpass -p ${password} scp -p Makefile ${user}@${pi}:${dir}/
+	sshpass -p ${password} scp -p src/*.cpp ${user}@${pi}:${dir}/src/
 	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make"
+
+remote_make_run:
+	sshpass -p ${password} scp -p Makefile ${user}@${pi}:${dir}/
+	sshpass -p ${password} scp -p src/*.cpp ${user}@${pi}:${dir}/src/
+	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make && make run"
 
 remote_run:
 	sshpass -p ${password} ssh -t ${user}@${pi} "cd ${dir} && make run"
