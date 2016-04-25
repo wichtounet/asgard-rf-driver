@@ -11,7 +11,10 @@
 
 namespace {
 
+// Configuration
 std::vector<asgard::KeyValue> config;
+
+// The driver connection
 asgard::driver_connector driver;
 
 // The remote IDs
@@ -29,7 +32,7 @@ void stop(){
     asgard::unregister_source(driver, source_id);
 
     // Unlink the client socket
-    unlink(asgard::get_string_value(config, "rf_client_socket_path"));
+    unlink(asgard::get_string_value(config, "rf_client_socket_path").c_str());
 
     // Close the socket
     close(driver.socket_fd);
@@ -103,10 +106,10 @@ int main(){
     }
     
     // Load the configuration file
-    load_config(config);
+    asgard::load_config(config);
 
     // Open the connection
-    if(!asgard::open_driver_connection(driver, asgard::get_string_value(config, "rf_client_socket_path"), asgard::get_string_value(config, "server_socket_path"))){
+    if(!asgard::open_driver_connection(driver, asgard::get_string_value(config, "rf_client_socket_path").c_str(), asgard::get_string_value(config, "server_socket_path").c_str())){
         return 1;
     }
 
