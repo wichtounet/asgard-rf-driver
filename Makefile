@@ -40,12 +40,14 @@ remote_clean:
 remote_make:
 	sshpass -p ${password} scp -p Makefile ${user}@${pi}:${dir}/
 	sshpass -p ${password} scp -p src/*.cpp ${user}@${pi}:${dir}/src/
-	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make"
+	sshpass -p ${password} scp -p asgard-lib/include/asgard/*.hpp ${user}@${pi}:${dir}/asgard-lib/include/asgard/
+	sshpass -p ${password} ssh -t ${user}@${pi} "cd ${dir} && make"
 
 remote_make_run:
 	sshpass -p ${password} scp -p Makefile ${user}@${pi}:${dir}/
 	sshpass -p ${password} scp -p src/*.cpp ${user}@${pi}:${dir}/src/
-	sshpass -p ${password} ssh ${user}@${pi} "cd ${dir} && make && make run"
+	sshpass -p ${password} scp -p asgard-lib/include/asgard/*.hpp ${user}@${pi}:${dir}/asgard-lib/include/asgard/
+	sshpass -p ${password} ssh -t ${user}@${pi} "cd ${dir} && make && make run"
 
 remote_run:
 	sshpass -p ${password} ssh -t ${user}@${pi} "cd ${dir} && make run"
