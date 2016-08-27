@@ -91,6 +91,9 @@ void read_data(RCSwitch& rc_switch){
 } //end of anonymous namespace
 
 int main(){
+    // Load the configuration file
+    asgard::load_config(config);
+
     RCSwitch rc_switch;
 
     //Run the wiringPi setup (as root)
@@ -104,9 +107,6 @@ int main(){
        std::cout << "asgard:rf: unable to revoke root privileges, exiting..." << std::endl;
        return 1;
     }
-
-    // Load the configuration file
-    asgard::load_config(config);
 
     // Open the connection
     if(!asgard::open_driver_connection(driver, asgard::get_string_value(config, "server_socket_addr").c_str(), asgard::get_int_value(config, "server_socket_port"))){
