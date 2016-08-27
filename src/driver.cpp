@@ -97,14 +97,14 @@ int main(){
     wiringPiSetup();
 
     rc_switch = RCSwitch();
-    rc_switch.enableReceive(asgard::get_int_value(config, "rf_gpio_pin"));
+    rc_switch.enableReceive(asgard::get_int_value(config, "rf_gpio_in_pin"));
 
     //Drop root privileges and run as pi:pi again
     if(!asgard::revoke_root()){
        std::cout << "asgard:rf: unable to revoke root privileges, exiting..." << std::endl;
        return 1;
     }
-    
+
     // Load the configuration file
     asgard::load_config(config);
 
